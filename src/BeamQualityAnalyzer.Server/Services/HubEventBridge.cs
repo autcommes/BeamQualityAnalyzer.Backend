@@ -253,12 +253,106 @@ public class HubEventBridge : IHostedService
             await _hubContext.Clients.All.SendAsync("OnCalculationCompleted", message);
             
             _logger.LogInformation("算法分析完成并推送到客户端");
+            
+            // 生成并推送可视化数据
+            await GenerateAndBroadcastVisualizationDataAsync(result, dataPoints);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "算法分析失败");
             await BroadcastErrorAsync("算法计算失败", ex.Message);
         }
+    }
+    
+    /// <summary>
+    /// 生成并广播可视化数据
+    /// </summary>
+    private async Task GenerateAndBroadcastVisualizationDataAsync(BeamAnalysisResult result, RawDataPoint[] dataPoints)
+    {
+        try
+        {
+            // 生成 X 方向 3D 能量分布数据
+            int gridSize = 80; // 80x80 网格
+            var energyDistributionX = Generate3DGaussianSurfaceSingleDirection(
+                result.GaussianFitX,
+                gridSize);
+            
+            // 生成 Y 方向 3D 能量分布数据
+            var energyDistributionY = Generate3DGaussianSurfaceSingleDirection(
+                result.GaussianFitY,
+                gridSize);
+            
+            // 序列化为 JSON
+            var energyDistributionXJson = System.Text.Json.JsonSerializer.Serialize(energyDistributionX);
+            var energyDistributionYJson = System.Text.Json.JsonSerializer.Serialize(energyDistributionY);
+            
+            // 构造可视化数据消息
+            var visualizationMessage = new VisualizationDataMessage
+            {
+                SpotCenterX = result.PeakPositionX,
+                SpotCenterY = result.PeakPositionY,
+                EnergyDistribution3DXJson = energyDistributionXJson,
+                EnergyDistribution3DYJson = energyDistributionYJson,
+                Timestamp = DateTime.Now
+            };
+            
+            // 推送到所有客户端
+            await _hubContext.Clients.All.SendAsync("OnVisualizationDataUpdated", visualizationMessage);
+            
+            _logger.LogInformation("可视化数据已生成并推送到客户端 (X和Y方向独立)");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "生成可视化数据失败");
+        }
+    }
+    
+    /// <summary>
+    /// 生成单方向 3D 高斯曲面数据
+    /// </summary>
+    private double[][] Generate3DGaussianSurfaceSingleDirection(GaussianFitResult? fit, int gridSize)
+    {
+        var surface = new double[gridSize][];
+        
+        if (fit == null)
+        {
+            // 如果没有拟合结果，返回空数据
+            for (int i = 0; i < gridSize; i++)
+            {
+                surface[i] = new double[gridSize];
+            }
+            return surface;
+        }
+        
+        // 使用高斯拟合参数生成 3D 曲面
+        double amplitude = fit.Amplitude * 100; // 放大100倍以增强3D效果
+        double mean = fit.Mean;
+        double sigma = fit.StandardDeviation;
+        
+        // 计算范围（基于 3σ 原则）
+        double min = mean - 3 * sigma;
+        double max = mean + 3 * sigma;
+        double step = (max - min) / (gridSize - 1);
+        
+        // 生成 2D 高斯分布（对称分布）
+        for (int i = 0; i < gridSize; i++)
+        {
+            surface[i] = new double[gridSize];
+            double x = min + i * step;
+            
+            for (int j = 0; j < gridSize; j++)
+            {
+                double y = min + j * step;
+                
+                // 2D 高斯函数: A * exp(-((x-μ)²/(2σ²) + (y-μ)²/(2σ²)))
+                double gaussianX = Math.Exp(-Math.Pow(x - mean, 2) / (2 * sigma * sigma));
+                double gaussianY = Math.Exp(-Math.Pow(y - mean, 2) / (2 * sigma * sigma));
+                
+                surface[i][j] = amplitude * gaussianX * gaussianY;
+            }
+        }
+        
+        return surface;
     }
     
     /// <summary>
