@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    
+    <!-- NuGet 包配置 -->
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>BeamQualityAnalyzer.Contracts</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>BeamQualityAnalyzer Team</Authors>
+    <Company>BeamQualityAnalyzer</Company>
+    <Product>BeamQualityAnalyzer</Product>
+    <Description>光束质量分析系统共享契约库，包含前后端通信的 DTO 模型、消息类型和枚举定义</Description>
+    <PackageTags>beam-analyzer;signalr;dto;contracts</PackageTags>
+    <PackageProjectUrl>https://github.com/yourorg/BeamQualityAnalyzer</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/yourorg/BeamQualityAnalyzer.Backend</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>
